@@ -77,6 +77,10 @@ a{color:var(--sky)}
 .btn.alert.on{border-color:var(--amber); color:var(--amber)}
 .freshline{width:100%; display:flex; align-items:center; gap:10px; color:var(--mist); font-size:12.5px; margin-top:2px}
 .freshline .src{margin-left:auto}
+.diagline{width:100%; margin-top:6px; font-size:11.5px; font-family:"Space Mono",monospace; color:var(--mist2)}
+.diagline #diag.ok{color:var(--moss)}
+.diagline #diag.bad{color:var(--coral)}
+.diagline #diag.work{color:var(--amber)}
 .live{display:inline-flex; align-items:center; gap:6px; color:var(--sky)}
 .live .dot{width:7px;height:7px;border-radius:50%;background:var(--sky); animation:pulse2 1.6s ease-out infinite}
 @keyframes pulse2{0%{box-shadow:0 0 0 0 rgba(91,200,224,.6)}70%{box-shadow:0 0 0 7px rgba(91,200,224,0)}100%{box-shadow:0 0 0 0 rgba(91,200,224,0)}}
@@ -236,6 +240,7 @@ footer .dis{max-width:680px; margin:6px auto 0}
       <span id="freshText">Last point —</span>
       <span class="src">Auto-refresh in <b id="countdown" class="mono">3:00</b> · source: <a href="https://trackleaders.com/raam26i.php?name=Pernille_Kinnunen" target="_blank" rel="noopener">TrackLeaders</a></span>
     </div>
+    <div class="diagline"><span id="diag">connection: starting…</span></div>
   </div>
 
   <!-- SIGNATURE: COAST-TO-COAST TRANSECT -->
@@ -448,6 +453,11 @@ const state = {
    UTILITIES
    ========================================================= */
 const $ = id => document.getElementById(id);
+function setDiag(msg, cls){
+  const el = $("diag"); if(!el) return;
+  el.textContent = "connection: " + msg;
+  el.className = cls || "";
+}
 const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp = (a,b,t)=>a+(b-a)*t;
 const KM = mi => mi*1.609344;
@@ -639,6 +649,7 @@ async function fetchJSON(url){
 }
 
 async function fetchTracker(){
+  setDiag("contacting relays…", "work");
   // Fire every relay at once and take the FIRST that returns a valid tracker
   // page. A relay that stalls (up to its 9s timeout) no longer delays the others.
   const attempts = proxyList().map(make => (async () => {
@@ -646,7 +657,7 @@ async function fetchTracker(){
     const res = await fetchWithTimeout(make(bust(RIDER_URL)), {cache:"no-store"}, 9000);
     if(!res.ok) throw new Error(via+" HTTP "+res.status);
     const txt = await res.text();
-    if(!looksLikeTracker(txt)) throw new Error(via+" returned an unexpected page");
+    if(!looksLikeTracker(txt)) throw new Error(via+" unexpected page");
     return { txt, via };
   })());
 
@@ -654,12 +665,18 @@ async function fetchTracker(){
   try{
     winner = await Promise.any(attempts);
   }catch(err){
-    const reasons = (err && err.errors ? err.errors.map(e=>e.message).join(" | ") : String(err));
+    const reasons = (err && err.errors ? err.errors.map(e=>e.message).join(" · ") : String(err));
     console.warn("[tracker] all relays failed —", reasons);
+    setDiag("OFFLINE — " + reasons, "bad");
     throw new Error("all relays failed");
   }
   console.info("[tracker] live data via", winner.via);
   const data = parseTracker(winner.txt);
+  if(data.routeMile==null){
+    setDiag("reached "+winner.via+" but couldn't read her position (page format changed?)", "bad");
+  } else {
+    setDiag("LIVE — via "+winner.via, "ok");
+  }
   state.data = data; state.isLive = true; state.lastGoodAt = new Date();
   return data;
 }
