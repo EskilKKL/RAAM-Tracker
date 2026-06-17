@@ -606,19 +606,30 @@ function looksLikeTracker(t){
    ignores the extra param. This is the usual cause of "live but never updates". */
 function bust(u){ return u + (u.indexOf("?")>=0 ? "&" : "?") + "_cb=" + Date.now(); }
 
+/* fetch() has NO timeout by default: if a relay opens the connection but then
+   stalls, the await never settles and the whole chain hangs on it forever
+   (the dashboard sits on "trying to reach the live tracker"). This aborts a
+   relay after `ms` so the next one in the list gets a turn. */
+function fetchWithTimeout(url, opts, ms){
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>ctrl.abort(), ms || 8000);
+  return fetch(url, Object.assign({}, opts||{}, {signal: ctrl.signal}))
+    .finally(()=>clearTimeout(id));
+}
+
 /* Resilient JSON fetch: try the URL directly first (works in a normal browser),
    then fall back to the same CORS proxies the tracker uses (works wherever the
    tracker already works, e.g. a sandboxed preview that blocks direct calls). */
 async function fetchJSON(url){
   let lastErr=null;
   try{
-    const r = await fetch(url, {cache:"no-store", headers:{"accept":"application/json"}});
+    const r = await fetchWithTimeout(url, {cache:"no-store", headers:{"accept":"application/json"}}, 8000);
     if(r.ok) return await r.json();
     lastErr = "HTTP "+r.status;
   }catch(e){ lastErr = e.message; }
   for(const make of proxyList()){
     try{
-      const r = await fetch(make(bust(url)), {cache:"no-store"});
+      const r = await fetchWithTimeout(make(bust(url)), {cache:"no-store"}, 8000);
       if(!r.ok){ lastErr="proxy HTTP "+r.status; continue; }
       const t = await r.text();
       return JSON.parse(t);
@@ -628,23 +639,27 @@ async function fetchJSON(url){
 }
 
 async function fetchTracker(){
-  let html=null, lastErr=null, usedVia=null;
-  for(const make of proxyList()){
-    const via = make("").split("/")[2] || "proxy";
-    try{
-      const res = await fetch(make(bust(RIDER_URL)), {cache:"no-store"});
-      if(!res.ok){ lastErr=via+" HTTP "+res.status; continue; }
-      const txt = await res.text();
-      if(looksLikeTracker(txt)){ html=txt; usedVia=via; break; }
-      lastErr=via+" returned an unexpected page";
-    }catch(e){ lastErr=via+": "+e.message; }
+  // Fire every relay at once and take the FIRST that returns a valid tracker
+  // page. A relay that stalls (up to its 9s timeout) no longer delays the others.
+  const attempts = proxyList().map(make => (async () => {
+    const via = (make("").split("/")[2]) || "proxy";
+    const res = await fetchWithTimeout(make(bust(RIDER_URL)), {cache:"no-store"}, 9000);
+    if(!res.ok) throw new Error(via+" HTTP "+res.status);
+    const txt = await res.text();
+    if(!looksLikeTracker(txt)) throw new Error(via+" returned an unexpected page");
+    return { txt, via };
+  })());
+
+  let winner;
+  try{
+    winner = await Promise.any(attempts);
+  }catch(err){
+    const reasons = (err && err.errors ? err.errors.map(e=>e.message).join(" | ") : String(err));
+    console.warn("[tracker] all relays failed —", reasons);
+    throw new Error("all relays failed");
   }
-  if(!html){
-    console.warn("[tracker] all relays failed —", lastErr);
-    throw new Error(lastErr||"all proxies failed");
-  }
-  console.info("[tracker] live data via", usedVia);
-  const data = parseTracker(html);
+  console.info("[tracker] live data via", winner.via);
+  const data = parseTracker(winner.txt);
   state.data = data; state.isLive = true; state.lastGoodAt = new Date();
   return data;
 }
