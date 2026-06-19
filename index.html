@@ -121,7 +121,15 @@ a{color:var(--sky)}
 .loc-line{font-size:15.5px; line-height:1.5}
 .loc-line .past{color:var(--mist)}
 .loc-line .to{color:var(--amber); font-weight:600}
-#map{height:230px; border-radius:12px; margin-top:12px; border:1px solid var(--line); background:#0d1426}
+#map{height:300px; border-radius:12px; margin-top:12px; border:1px solid var(--line); background:#0d1426}
+.maphint{margin-top:6px; font-size:11px; color:var(--mist2)}
+.miniprofile{margin-top:12px; background:linear-gradient(180deg,#0e1730,#0b1326); border:1px solid var(--line); border-radius:12px; padding:8px 8px 4px}
+.miniprofile svg{width:100%; height:auto; display:block}
+.miniprofile-cap{font-size:11px; color:var(--mist); margin-top:2px; text-align:center; font-family:"Hanken Grotesk"}
+.routerefs{margin-top:12px; font-size:11.5px; color:var(--mist)}
+.routerefs a{color:var(--sky); text-decoration:none; border-bottom:1px dotted var(--line)}
+.fin-ok{color:var(--moss); font-weight:700}
+.fin-bad{color:var(--coral); font-weight:700}
 .leaflet-container{background:#0d1426; font-family:inherit}
 /* Essential Leaflet layout rules inlined, so the map still positions tiles even if the CDN stylesheet is blocked */
 .leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
@@ -143,6 +151,12 @@ a{color:var(--sky)}
 .leaflet-bar a{background:#1B2540;color:#EAF0FF;display:block;width:26px;height:26px;line-height:26px;text-align:center;text-decoration:none;border-bottom:1px solid var(--line)}
 .leaflet-control-attribution{background:rgba(11,16,32,.8);color:#8A97B5;padding:0 5px;font-size:10px}
 .leaflet-control-attribution a{color:#8A97B5}
+.leaflet-control-layers{background:#141C30; color:#EAF0FF; border:1px solid var(--line); border-radius:8px; box-shadow:0 6px 18px -10px rgba(0,0,0,.8)}
+.leaflet-control-layers-toggle{background-color:#1B2540; width:30px; height:30px; background-image:none}
+.leaflet-control-layers-toggle:after{content:"☰"; display:block; text-align:center; line-height:30px; color:#EAF0FF; font-size:15px}
+.leaflet-control-layers-expanded{padding:8px 10px; font-family:"Hanken Grotesk"; font-size:12.5px}
+.leaflet-control-layers-expanded label{margin:3px 0; display:flex; align-items:center; gap:6px}
+.leaflet-control-scale-line{background:rgba(11,16,32,.7); color:#EAF0FF; border-color:#4a5878}
 .mapfallback{margin-top:12px; padding:14px; border:1px dashed var(--line); border-radius:12px; background:#0d1426; color:var(--mist); font-size:13px; line-height:1.5}
 .mapfallback b{color:var(--text)}
 
@@ -266,7 +280,13 @@ footer .dis{max-width:680px; margin:6px auto 0}
       <div class="kv"><span class="k">Route mile</span><span class="v" id="locMile">—</span></div>
       <div class="kv"><span class="k">Elevation</span><span class="v" id="locElev">—</span></div>
       <div class="kv"><span class="k">Coordinates (interpolated)</span><span class="v" id="locCoord">—</span></div>
+      <div class="kv"><span class="k">Terrain right now</span><span class="v" id="locGrade">—</span></div>
+      <div class="miniprofile">
+        <svg id="locProfile" viewBox="0 0 600 150" aria-label="Elevation profile of her current segment"></svg>
+        <div class="miniprofile-cap" id="locProfileCap">Elevation along this stretch of the route</div>
+      </div>
       <div id="map"></div>
+      <div class="maphint">Shaded‑relief view (like the RAAM route maps). Tap the layers button (top‑right) for satellite, contour terrain, or dark.</div>
     </section>
 
     <section class="card" id="cardWeather">
@@ -306,6 +326,8 @@ footer .dis{max-width:680px; margin:6px auto 0}
       <div class="bar"><i id="finBar" style="width:0%"></i></div>
       <div class="kv"><span class="k">Distance remaining</span><span class="v" id="finRem">—</span></div>
       <div class="kv"><span class="k">Daily pace so far</span><span class="v" id="finPace">—</span></div>
+      <div class="kv"><span class="k">Speed needed for cutoff</span><span class="v" id="finNeed">—</span></div>
+      <div class="kv"><span class="k">Her pace vs needed</span><span class="v" id="finVs">—</span></div>
       <div class="kv"><span class="k">Time on the road</span><span class="v" id="finElapsed">—</span></div>
       <div class="kv"><span class="k">Est. total time</span><span class="v" id="finTotal">—</span></div>
       <div class="note" id="finNote"></div>
@@ -320,6 +342,7 @@ footer .dis{max-width:680px; margin:6px auto 0}
           <span class="tag" id="areaTag" style="display:none"></span>
           <p id="areaText">Loading a snapshot of where she is right now…</p>
           <p style="margin-top:8px"><a id="areaLink" href="#" target="_blank" rel="noopener" style="display:none">More on this place →</a></p>
+          <p class="routerefs">RAAM route references: <a href="https://www.raamrace.org/_files/ugd/49fb96_a629ec14252c4a54ba33dc9deb4d2e90.pdf" target="_blank" rel="noopener">Climbing chart</a> · <a href="https://www.raamrace.org/_files/ugd/49fb96_a3c8fce723b241ddb480a575c72edfa1.pdf" target="_blank" rel="noopener">Route map</a> · <a href="https://www.raamrace.org/_files/ugd/49fb96_c526bef58e11407285beb5d3ba183015.pdf" target="_blank" rel="noopener">Directions</a></p>
         </div>
       </div>
     </section>
@@ -349,7 +372,9 @@ const RIDER_URL = "https://trackleaders.com/raam26i.php?name=Pernille_Kinnunen";
 const TOTAL_MI = 3065.0;
 // RAAM Solo start: 12:00:00 PM PDT on 06/16/26  ->  19:00 UTC
 const START_UTC = Date.UTC(2026, 5, 16, 19, 0, 0);
-const SOLO_CUTOFF_DAYS = 12;
+// Her finish cutoff (Solo Women 60+): 3:00 PM EDT Monday 29 June 2026
+//   = 12:00 noon PDT = 21:00 CEST  ->  19:00 UTC. The course closes at this moment.
+const CUTOFF_UTC = Date.UTC(2026, 5, 29, 19, 0, 0);
 const PDT_OFFSET_H = -7; // June -> PDT = UTC-7
 
 // ts, mile, town, state(full), lat, lon, elevationFt, wikiTitle
@@ -768,6 +793,7 @@ async function fetchWiki(title){
    RENDERING
    ========================================================= */
 let map=null, mkRider=null, mkNext=null, routeLine=null, mapWarned=false;
+const elevCache = {};
 
 function render(){
   const d = state.data; if(!d) return;
@@ -877,6 +903,106 @@ function renderLocation(d, pos){
   const elFt = d.elev!=null? d.elev : pos.elevFt;
   $("locElev").textContent = Math.round(elFt)+" ft ("+Math.round(elFt*0.3048)+" m) · gain "+(d.elevGain!=null?Math.round(d.elevGain)+" ft":"—");
   $("locCoord").textContent = pos.lat.toFixed(3)+", "+pos.lon.toFixed(3);
+
+  // terrain trend between the two bracketing time stations
+  const segMi = (b.mile - a.mile) || 1;
+  const dElev = (b.elev - a.elev); // ft across this segment
+  const gradePct = dElev/(segMi*5280)*100;
+  const climbing = dElev > 80, descending = dElev < -80;
+  const trend = climbing ? "Climbing" : descending ? "Descending" : "Rolling / flat";
+  const arrow = climbing ? "▲" : descending ? "▼" : "→";
+  const dTxt = (dElev>=0?"+":"−")+Math.abs(Math.round(dElev))+" ft ("+(dElev>=0?"+":"−")+Math.abs(Math.round(dElev*0.3048))+" m)";
+  $("locGrade").innerHTML = '<span style="color:'+(climbing?'var(--coral)':descending?'var(--moss)':'var(--text)')+'">'+arrow+" "+trend+'</span>'
+    + " · "+dTxt+" to "+esc(b.town)+" · ~"+Math.abs(gradePct).toFixed(1)+"% avg";
+
+  renderLocalProfile(d, pos);
+}
+
+/* Localised elevation profile: a zoomed slice of the route around her position,
+   so the elevation right where she is gets a visual (the big transect up top is
+   the whole 3,065 mi; this is the neighbourhood). */
+function renderLocalProfile(d, pos){
+  const svg = $("locProfile"); if(!svg) return;
+  const seg = { prev: pos.prev, next: pos.next, lo: pos.prev.mile, hi: pos.next.mile };
+  const key = seg.prev.ts + "-" + seg.next.ts;
+  const mile = d.routeMile||0;
+  if(elevCache[key]){
+    drawSegProfile(elevCache[key], seg, mile, true);
+  } else {
+    // instant coarse profile from the two station elevations while real data loads
+    drawSegProfile([{mi:seg.lo,ft:seg.prev.elev},{mi:seg.hi,ft:seg.next.elev}], seg, mile, false);
+    fetchSegmentElevation(seg, key);
+  }
+}
+
+/* Pull REAL terrain elevation along the current TS→TS segment (free, keyless
+   Open-Meteo elevation API) so the profile matches the official RAAM route maps
+   instead of a straight line between two stations. Cached per segment. */
+async function fetchSegmentElevation(seg, key){
+  try{
+    const N = 70;
+    const lats=[], lons=[];
+    for(let i=0;i<N;i++){
+      const t=i/(N-1);
+      lats.push(lerp(seg.prev.lat, seg.next.lat, t).toFixed(4));
+      lons.push(lerp(seg.prev.lon, seg.next.lon, t).toFixed(4));
+    }
+    const url = "https://api.open-meteo.com/v1/elevation?latitude="+lats.join(",")+"&longitude="+lons.join(",");
+    const j = await fetchJSON(url);
+    if(!j || !j.elevation || !j.elevation.length) return;
+    const samples = j.elevation.map((m,i)=>({ mi: lerp(seg.lo, seg.hi, i/(N-1)), ft: m*3.28084 }));
+    elevCache[key] = samples;
+    const cur = state.data ? positionAt(state.data.routeMile||0) : null;
+    if(cur && cur.prev.ts===seg.prev.ts && cur.next.ts===seg.next.ts){
+      drawSegProfile(samples, seg, state.data.routeMile||0, true);
+    }
+  }catch(e){ /* keep the coarse profile */ }
+}
+
+function drawSegProfile(samples, seg, mile, real){
+  const svg = $("locProfile"); if(!svg || !samples.length) return;
+  const W=600, H=150, padL=46, padR=10, padT=14, padB=26;
+  const ys = samples.map(s=>s.ft);
+  let eMin=Math.min.apply(null,ys), eMax=Math.max.apply(null,ys);
+  const rpad=(eMax-eMin)*0.12 || 60; eMin-=rpad; eMax+=rpad;
+  const eSpan=(eMax-eMin)||1;
+  const lo=seg.lo, hi=seg.hi, span=(hi-lo)||1;
+  const xOf=mi=>padL+((mi-lo)/span)*(W-padL-padR);
+  const yOf=ft=>padT+(1-((ft-eMin)/eSpan))*(H-padT-padB);
+  // RAAM-style horizontal bands + elevation labels
+  let grid="", bands="";
+  const ticks=4;
+  for(let i=0;i<=ticks;i++){
+    const ft=eMin+eSpan*i/ticks, y=yOf(ft);
+    grid += '<line x1="'+padL+'" y1="'+y.toFixed(1)+'" x2="'+(W-padR)+'" y2="'+y.toFixed(1)+'" stroke="#27324F" stroke-width="0.6"/>'
+         +  '<text x="'+(padL-5)+'" y="'+(y+3).toFixed(1)+'" fill="#8A97B5" font-size="9" text-anchor="end" font-family="Space Mono">'+Math.round(ft).toLocaleString()+'</text>';
+    if(i<ticks && i%2===0){ const y2=yOf(eMin+eSpan*(i+1)/ticks); bands += '<rect x="'+padL+'" y="'+y2.toFixed(1)+'" width="'+(W-padL-padR)+'" height="'+(y-y2).toFixed(1)+'" fill="#ffffff" opacity="0.025"/>'; }
+  }
+  // mile axis (segment-relative)
+  let xlab="";
+  const segLen=hi-lo, step=segLen>40?10:(segLen>20?5:2);
+  for(let m=0;m<=segLen+0.01;m+=step){
+    const x=xOf(lo+m);
+    xlab += '<line x1="'+x.toFixed(1)+'" y1="'+(H-padB)+'" x2="'+x.toFixed(1)+'" y2="'+(H-padB+3)+'" stroke="#5C6A8C" stroke-width="0.8"/>'
+         +  '<text x="'+x.toFixed(1)+'" y="'+(H-padB+13)+'" fill="#8A97B5" font-size="8.5" text-anchor="middle" font-family="Space Mono">'+m+'</text>';
+  }
+  const line = samples.map((s,i)=>(i?"L":"M")+xOf(s.mi).toFixed(1)+","+yOf(s.ft).toFixed(1)).join(" ");
+  const area = "M"+xOf(lo).toFixed(1)+","+(H-padB)+" "+samples.map(s=>"L"+xOf(s.mi).toFixed(1)+","+yOf(s.ft).toFixed(1)).join(" ")+" L"+xOf(hi).toFixed(1)+","+(H-padB)+" Z";
+  // her elevation interpolated from the samples
+  let herFt=samples[samples.length-1].ft;
+  for(let i=1;i<samples.length;i++){ if(mile<=samples[i].mi){ const a=samples[i-1],b=samples[i],t=(mile-a.mi)/((b.mi-a.mi)||1); herFt=lerp(a.ft,b.ft,t); break; } }
+  const hx=xOf(clamp(mile,lo,hi)), hy=yOf(herFt);
+  svg.innerHTML =
+    '<defs><linearGradient id="lpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5BC8E0" stop-opacity="0.30"/><stop offset="1" stop-color="#5BC8E0" stop-opacity="0.03"/></linearGradient></defs>'
+    + bands + grid + xlab
+    + '<path d="'+area+'" fill="url(#lpg)"/>'
+    + '<path d="'+line+'" fill="none" stroke="#9FD0E6" stroke-width="1.4"/>'
+    + '<text x="'+padL+'" y="10" fill="#F2A65A" font-size="9.5" font-family="Space Mono">'+esc(seg.prev.town)+'</text>'
+    + '<text x="'+(W-padR)+'" y="10" fill="#F2A65A" font-size="9.5" text-anchor="end" font-family="Space Mono">'+esc(seg.next.town)+'</text>'
+    + '<line x1="'+hx.toFixed(1)+'" y1="'+padT+'" x2="'+hx.toFixed(1)+'" y2="'+(H-padB)+'" stroke="#FF6B5E" stroke-width="1" opacity="0.6"/>'
+    + '<circle cx="'+hx.toFixed(1)+'" cy="'+hy.toFixed(1)+'" r="4.5" fill="#FF6B5E" stroke="#fff" stroke-width="1.5"/>';
+  const cap=$("locProfileCap");
+  if(cap) cap.textContent = seg.prev.town+" → "+seg.next.town+" · "+(real?"real terrain":"loading terrain…")+" · she's at ~"+Math.round(herFt).toLocaleString()+" ft ("+Math.round(herFt*0.3048).toLocaleString()+" m)";
 }
 
 function renderWeather(){
@@ -941,6 +1067,30 @@ function renderFinish(d){
   $("finRem").textContent = fmtDist(rem,0);
   $("finPace").textContent = pace? fmtDist(pace,0)+"/day" : "—";
 
+  // ---- pace needed to beat her Women 60+ cutoff (3pm EDT Mon 29 Jun), and how she compares ----
+  const cutoffMs = CUTOFF_UTC;
+  const hoursToCutoff = (cutoffMs - Date.now())/3600000;
+  const herAvgMph = (d.routeAvg!=null ? d.routeAvg : (pace ? pace/24 : null));
+  if(rem<=0){
+    $("finNeed").textContent = "—";
+    $("finVs").innerHTML = '<span class="fin-ok">Finished ✓</span>';
+  } else if(hoursToCutoff<=0){
+    $("finNeed").textContent = "cutoff time passed";
+    $("finVs").innerHTML = '<span class="fin-bad">past the cutoff</span>';
+  } else {
+    const needMph = rem/hoursToCutoff;
+    $("finNeed").textContent = fmtSpeed(needMph)+" ("+fmtDist(needMph*24,0)+"/day)";
+    if(herAvgMph!=null){
+      const ok = herAvgMph >= needMph;
+      const diff = Math.abs(herAvgMph-needMph);
+      $("finVs").innerHTML = '<span class="'+(ok?'fin-ok':'fin-bad')+'">'+fmtSpeed(herAvgMph)+'</span> '
+        + '<span style="color:var(--mist); font-family:\'Hanken Grotesk\'; font-size:12px">'
+        + (ok?'▲ ':'▼ ')+fmtSpeed(diff)+(ok?' to spare':' short')+'</span>';
+    } else {
+      $("finVs").textContent = "—";
+    }
+  }
+
   const elapsedMs = Date.now()-START_UTC;
   $("finElapsed").textContent = durText(elapsedMs);
 
@@ -951,12 +1101,11 @@ function renderFinish(d){
     $("finLocal").textContent = "your time: "+fmtLocal(finishDate)+"  ·  "+agoFuture(finishDate).replace("in ","");
     const totalMs = finishDate.getTime()-START_UTC;
     $("finTotal").textContent = durText(totalMs);
-    const cutoff = new Date(START_UTC + SOLO_CUTOFF_DAYS*86400000);
+    const cutoff = new Date(CUTOFF_UTC);
     const marginH = Math.round((cutoff.getTime()-finishDate.getTime())/3600000);
-    $("finNote").innerHTML = "Projected from her pace so far. Solo cutoff is "+SOLO_CUTOFF_DAYS
-      +" days ("+fmtPDT(cutoff)+") — current projection is about "
+    $("finNote").innerHTML = "Projected from her pace so far. Her cutoff (Women 60+) is <b>3pm EDT Mon 29 Jun</b> ("+fmtPDT(cutoff)+") — current projection is about "
       + (marginH>=0? "<b style='color:var(--moss)'>"+marginH+" h inside</b>" : "<b style='color:var(--coral)'>"+Math.abs(marginH)+" h over</b>")
-      + " the limit. Updates every refresh.";
+      + " the cutoff. Updates every refresh.";
   } else if(rem<=0){
     $("finDate").textContent = "Finished 🎉";
     $("finLocal").textContent = "";
@@ -1007,18 +1156,43 @@ function updateMap(pos, next){
   try{
     if(!map){
       map = L.map("map",{zoomControl:true, attributionControl:true, scrollWheelZoom:false});
-      const tiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
-        attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:"abcd", maxZoom:18
+
+      const dark = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
+        attribution:'&copy; OpenStreetMap &copy; CARTO', subdomains:"abcd", maxZoom:19
       });
-      // if the tile server is blocked, fall back to OpenStreetMap's standard tiles, then to a message
+      const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{
+        attribution:'&copy; OpenTopoMap (CC-BY-SA)', subdomains:"abc", maxZoom:17
+      });
+      const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{
+        attribution:'Imagery &copy; Esri', maxZoom:19
+      });
+      const placeLabels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{
+        maxZoom:19, opacity:0.85
+      });
+      const satellite = L.layerGroup([sat, placeLabels]);
+
+      // RAAM-route-map style: grayscale shaded relief + roads + place labels.
+      const reliefBase = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}",{
+        attribution:'Relief &copy; Esri', maxNativeZoom:13, maxZoom:18
+      });
+      const roads = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",{
+        maxZoom:19, opacity:0.9
+      });
+      const relief = L.layerGroup([reliefBase, roads, placeLabels]);
+
+      // Default to the RAAM-style relief view.
+      relief.addTo(map);
+      L.control.layers(
+        { "Relief (RAAM style)": relief, "Satellite": satellite, "Terrain (contours)": topo, "Dark": dark },
+        {}, { position:"topright", collapsed:true }
+      ).addTo(map);
+      try{ L.control.scale({metric:true, imperial:true, position:"bottomleft"}).addTo(map); }catch(e){}
+
+      // If the relief tiles are blocked, drop back to the dark basemap automatically.
       let tileErrs=0;
-      tiles.on("tileerror", ()=>{ if(++tileErrs===6){
-        try{ map.removeLayer(tiles);
-          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:'&copy; OpenStreetMap', maxZoom:18}).addTo(map);
-        }catch(e){}
-      }});
-      tiles.addTo(map);
-      // Leaflet needs a size recalculation once the container has actually been laid out
+      reliefBase.on("tileerror", ()=>{ if(++tileErrs===8){ try{ map.removeLayer(relief); dark.addTo(map); }catch(e){} } });
+
+      // Leaflet needs a size recalc once the container has actually been laid out.
       setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 60);
       setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 400);
       setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 1200);
@@ -1026,15 +1200,15 @@ function updateMap(pos, next){
     }
     const rider=[pos.lat,pos.lon], nx=[next.lat,next.lon];
     if(!mkRider){
-      mkRider=L.circleMarker(rider,{radius:8,color:"#1a0a08",weight:2,fillColor:"#FF6B5E",fillOpacity:1}).addTo(map);
+      mkRider=L.circleMarker(rider,{radius:9,color:"#ffffff",weight:2.5,fillColor:"#FF6B5E",fillOpacity:1}).addTo(map);
     } else mkRider.setLatLng(rider);
     mkRider.bindTooltip("Pernille · 717",{permanent:false});
     if(!mkNext){
-      mkNext=L.circleMarker(nx,{radius:6,color:"#1a1206",weight:2,fillColor:"#F2A65A",fillOpacity:1}).addTo(map);
+      mkNext=L.circleMarker(nx,{radius:6.5,color:"#ffffff",weight:2,fillColor:"#F2A65A",fillOpacity:1}).addTo(map);
     } else mkNext.setLatLng(nx);
     mkNext.bindTooltip("Next: "+next.town,{permanent:false});
     if(routeLine) map.removeLayer(routeLine);
-    routeLine=L.polyline([rider,nx],{color:"#F2A65A",weight:2,opacity:.5,dashArray:"5,6"}).addTo(map);
+    routeLine=L.polyline([rider,nx],{color:"#FFD27A",weight:3,opacity:.85,dashArray:"6,7"}).addTo(map);
     const b=L.latLngBounds([rider,nx]).pad(0.6);
     map.fitBounds(b,{maxZoom:9});
     setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 50);
