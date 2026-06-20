@@ -175,6 +175,7 @@ a{color:var(--sky)}
 .next-name{font-family:"Oswald"; font-weight:600; font-size:24px; line-height:1.1}
 .next-eta{font-family:"Space Mono"; font-size:14px; color:var(--sky); margin-top:8px}
 .next-eta .lab{color:var(--mist)}
+.next-note{font-size:11px; color:var(--mist2); margin-top:8px; line-height:1.45}
 .upcoming{margin-top:12px; border-top:1px solid rgba(39,50,79,.7); padding-top:6px}
 .up{display:flex; justify-content:space-between; gap:10px; padding:6px 0; font-size:13px}
 .up .n{color:var(--text)} .up .d{font-family:"Space Mono"; color:var(--mist)}
@@ -237,10 +238,10 @@ footer .dis{max-width:680px; margin:6px auto 0}
   <!-- TOP BAR -->
   <div class="topbar">
     <div class="brand">
-      <span class="bib">717</span>
+      <span class="bib" id="bib">717</span>
       <div>
-        <h1>Pernille Kinnunen</h1>
-        <div class="sub">RAAM 2026 · Solo · Oceanside → Atlantic City</div>
+        <h1 id="riderName">Pernille Kinnunen</h1>
+        <div class="sub" id="riderSub">RAAM 2026 · Solo · Oceanside → Atlantic City</div>
       </div>
     </div>
     <div class="spacer"></div>
@@ -258,7 +259,7 @@ footer .dis{max-width:680px; margin:6px auto 0}
     <div class="freshline">
       <span class="live"><span class="dot"></span>LIVE</span>
       <span id="freshText">Last point —</span>
-      <span class="src">Auto-refresh in <b id="countdown" class="mono">3:00</b> · source: <a href="https://trackleaders.com/raam26i.php?name=Pernille_Kinnunen" target="_blank" rel="noopener">TrackLeaders</a></span>
+      <span class="src">Auto-refresh in <b id="countdown" class="mono">3:00</b> · source: <a id="srcLink" href="https://trackleaders.com/raam26i.php?name=Pernille_Kinnunen" target="_blank" rel="noopener">TrackLeaders</a></span>
     </div>
     <div class="diagline"><span id="diag">connection: starting…</span></div>
   </div>
@@ -322,7 +323,8 @@ footer .dis{max-width:680px; margin:6px auto 0}
       <div class="next-name" id="nextName">—</div>
       <div class="kv"><span class="k">Distance to go</span><span class="v" id="nextDist">—</span></div>
       <div class="next-eta"><span class="lab">ETA </span><span id="nextEta">—</span></div>
-      <div class="next-eta" style="color:var(--mist)"><span class="lab">Your time </span><span id="nextEtaLocal">—</span></div>
+      <div class="next-eta" style="color:var(--mist)"><span class="lab" id="nextEtaLab">Your time </span><span id="nextEtaLocal">—</span></div>
+      <div class="next-note" id="nextNote"></div>
       <div class="upcoming" id="upcoming"></div>
     </section>
 
@@ -603,9 +605,12 @@ function fmtLocal(d){
   if(!d) return "—";
   return d.toLocaleString(undefined,{weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});
 }
-function fmtPDT(d){
+/* Race clock shown to viewers — EDT (the Atlantic City finish zone), which is
+   how RAAM quotes its cutoffs. Source data from TrackLeaders is in PDT and is
+   parsed by parsePDT into a correct absolute time; only the display is EDT. */
+function fmtEDT(d){
   if(!d) return "—";
-  try{ return d.toLocaleString("en-US",{timeZone:"America/Los_Angeles",weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+" PDT"; }
+  try{ return d.toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+" EDT"; }
   catch(e){ return "—"; }
 }
 function durText(ms){
@@ -904,7 +909,7 @@ function renderStatus(d){
     const ageMs = d.lastUpdate ? (Date.now()-d.lastUpdate.getTime()) : null;
     const old = ageMs!=null && ageMs>30*60000;
     fresh = (old?"<span class='warn'>● </span>":"<span class='live-dot'>● </span>")
-      + "Live · last point " + (d.lastUpdate?agoText(d.lastUpdate):"—") + " · " + fmtPDT(d.lastUpdate)
+      + "Live · last point " + (d.lastUpdate?agoText(d.lastUpdate):"—") + " · " + fmtEDT(d.lastUpdate)
       + (old ? " — the tracker hasn't reported a newer point yet" : "");
   }
   $("freshText").innerHTML = fresh;
@@ -1146,9 +1151,44 @@ function renderWeather(){
 
 function renderNext(d, next, pos){
   $("nextName").textContent = d.nextWaypointRaw || (next? ("TS "+next.ts+": "+next.town):"—");
-  $("nextDist").textContent = d.distToNext!=null ? fmtDist(d.distToNext,1) : fmtDist(pos.toNext,1);
-  $("nextEta").textContent = d.etaWaypoint ? fmtPDT(d.etaWaypoint) : (d.etaWaypointRaw||"—");
-  $("nextEtaLocal").textContent = d.etaWaypoint ? (fmtLocal(d.etaWaypoint)+"  ·  "+agoFuture(d.etaWaypoint)) : "—";
+  const distNext = d.distToNext!=null ? d.distToNext : pos.toNext;
+  $("nextDist").textContent = distNext!=null ? fmtDist(distNext,1) : "—";
+
+  // ETA from her recent *riding* pace (moving average), so a short hop to the next
+  // station reads sensibly. We deliberately don't use the tracker's own ETA (it can
+  // look off) and we don't try to predict sleep stops — that's flagged in the note.
+  // The tracker's moving-average can spike to impossible values from GPS noise, so
+  // clamp to a believable cycling range before trusting it.
+  const sane = v => (v!=null && v>=3 && v<=25) ? v : null;
+  const moveMph = sane(d.movingAvg) || sane(d.routeAvg) || null;
+  const resting = (d.speed||0) < 2;
+  const lab = $("nextEtaLab");
+  if(distNext!=null && distNext<=0){
+    $("nextEta").textContent = "arriving now";
+    if(lab) lab.textContent = "";
+    $("nextEtaLocal").textContent = "";
+    $("nextNote").textContent = "";
+  } else if(distNext!=null && moveMph){
+    const rideMs = (distNext/moveMph)*3600000;
+    if(resting){
+      $("nextEta").textContent = "resting — ~"+durText(rideMs)+" of riding to go";
+      if(lab) lab.textContent = "";
+      $("nextEtaLocal").textContent = "the ETA clock resumes once she's moving again";
+      $("nextNote").textContent = "She's stopped right now, so there's no arrival time — about "+durText(rideMs)+" of pedalling remains to the next station at her usual riding pace.";
+    } else {
+      const eta = new Date(Date.now()+rideMs);
+      $("nextEta").textContent = fmtEDT(eta);
+      if(lab) lab.textContent = "Your time ";
+      $("nextEtaLocal").textContent = fmtLocal(eta)+"  ·  "+agoFuture(eta);
+      $("nextNote").textContent = "Estimate from her recent riding pace ("+fmtSpeed(moveMph)+"). Any sleep or rest stop before the station isn't predicted, so read it as \u201cif she keeps rolling.\u201d";
+    }
+  } else {
+    $("nextEta").textContent = "—";
+    if(lab) lab.textContent = "Your time ";
+    $("nextEtaLocal").textContent = "—";
+    $("nextNote").textContent = "";
+  }
+
   // upcoming list
   const startTs = next? next.ts : 0;
   const ups = STATIONS.filter(s=>s.ts>startTs && s.ts!==999).slice(0,4);
@@ -1204,13 +1244,13 @@ function renderFinish(d){
   if(pace && pace>0 && rem>0){
     const daysLeft = rem/pace;
     const finishDate = new Date(Date.now()+daysLeft*86400000);
-    $("finDate").textContent = fmtPDT(finishDate);
+    $("finDate").textContent = fmtEDT(finishDate);
     $("finLocal").textContent = "your time: "+fmtLocal(finishDate)+"  ·  "+agoFuture(finishDate).replace("in ","");
     const totalMs = finishDate.getTime()-START_UTC;
     $("finTotal").textContent = durText(totalMs);
     const cutoff = new Date(CUTOFF_UTC);
     const marginH = Math.round((cutoff.getTime()-finishDate.getTime())/3600000);
-    $("finNote").innerHTML = "Projected from her pace so far. Her cutoff (Women 60+) is <b>3pm EDT Mon 29 Jun</b> ("+fmtPDT(cutoff)+") — current projection is about "
+    $("finNote").innerHTML = "Projected from her pace so far (her overall average, sleep stops included). Her cutoff (Women 60+) is <b>3pm EDT Mon 29 Jun</b> ("+fmtEDT(cutoff)+") — current projection is about "
       + (marginH>=0? "<b style='color:var(--moss)'>"+marginH+" h inside</b>" : "<b style='color:var(--coral)'>"+Math.abs(marginH)+" h over</b>")
       + " the cutoff. Updates every refresh.";
   } else if(rem<=0){
@@ -1230,7 +1270,7 @@ function renderPings(d){
     const dt = parsePDT(p.timeRaw);
     const slow = p.speed<5;
     return '<div class="ping'+(slow?' slow':'')+'">'
-      + '<span class="t">'+(dt?fmtPDT(dt).replace(" PDT",""):"—")+'<br><span style="opacity:.7">'+(dt?agoText(dt):"")+'</span></span>'
+      + '<span class="t">'+(dt?fmtEDT(dt).replace(" EDT",""):"—")+'<br><span style="opacity:.7">'+(dt?agoText(dt):"")+'</span></span>'
       + '<span class="meta">'+fmtDist(p.dist,1)+' covered</span>'
       + '<span class="sp">'+fmtSpeed(p.speed)+'</span>'
       + '</div>';
@@ -1376,10 +1416,9 @@ async function refreshAll(reason){
   }catch(e){
     // keep last good data; surface a gentle banner
     if(!state.isLive){
-      // still on snapshot
       $("freshText").innerHTML = "<span class='warn'>● </span>Can't reach the live tracker — showing the last snapshot. Retrying…";
     } else {
-      $("freshText").innerHTML = "<span class='warn'>● </span>Live update failed — showing last good data from "+fmtPDT(state.lastGoodAt)+". Retrying…";
+      $("freshText").innerHTML = "<span class='warn'>● </span>Live update failed — showing last good data from "+fmtEDT(state.lastGoodAt)+". Retrying…";
     }
   }
 }
