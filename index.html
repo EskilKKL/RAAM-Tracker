@@ -185,6 +185,10 @@ a{color:var(--sky)}
 .bar{height:9px; border-radius:999px; background:rgba(255,255,255,.07); overflow:hidden; margin:12px 0 4px; border:1px solid var(--line)}
 .bar > i{display:block; height:100%; background:linear-gradient(90deg, var(--amber), var(--coral)); border-radius:999px}
 .note{color:var(--mist); font-size:12px; margin-top:10px; line-height:1.5}
+.distfun{margin-top:11px; padding-top:11px; border-top:1px solid var(--line); font-family:"Hanken Grotesk"; font-size:12.5px; color:var(--mist); line-height:1.55}
+.distfun b{color:var(--sand); font-weight:600}
+.distfun .df-amt{color:#9FD0E6; font-family:"Space Mono"}
+.distfun .df-tag{display:inline-block; font-family:"Oswald"; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#0e1a2a; background:#7FE0B0; padding:2px 7px 1px; border-radius:999px; margin-right:7px; vertical-align:1px}
 
 /* area */
 .area{display:flex; gap:14px}
@@ -193,6 +197,8 @@ a{color:var(--sky)}
 .area .town{font-family:"Oswald"; font-weight:600; font-size:19px; letter-spacing:.3px}
 .tag{display:inline-block; font-family:"Oswald"; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink); background:var(--amber); padding:3px 9px 2px; border-radius:999px; margin:6px 0 8px}
 .area p{margin:0; color:var(--mist); font-size:13px; line-height:1.55}
+.factoid{margin:0 0 9px !important; padding:9px 12px; background:rgba(127,224,176,.07); border-left:3px solid #7FE0B0; border-radius:0 8px 8px 0; color:var(--sand) !important; font-size:13px !important; line-height:1.5 !important}
+.factoid b{color:#9FE9C4; font-weight:600; font-family:"Oswald"; letter-spacing:.04em}
 .area a{font-size:12.5px}
 @media(max-width:420px){ .area{flex-direction:column} .area img{width:100%; height:150px} }
 
@@ -269,6 +275,7 @@ footer .dis{max-width:680px; margin:6px auto 0}
       <span id="terrainTag"></span>
       <span>Atlantic City, NJ <b>· finish</b></span>
     </div>
+    <div class="distfun" id="distFun"></div>
   </section>
 
   <!-- CARDS -->
@@ -340,6 +347,7 @@ footer .dis{max-width:680px; margin:6px auto 0}
         <div class="body">
           <div class="town" id="areaTown">—</div>
           <span class="tag" id="areaTag" style="display:none"></span>
+          <p class="factoid" id="areaFact" style="display:none"></p>
           <p id="areaText">Loading a snapshot of where she is right now…</p>
           <p style="margin-top:8px"><a id="areaLink" href="#" target="_blank" rel="noopener" style="display:none">More on this place →</a></p>
           <p class="routerefs">RAAM route references: <a href="https://www.raamrace.org/_files/ugd/49fb96_a629ec14252c4a54ba33dc9deb4d2e90.pdf" target="_blank" rel="noopener">Climbing chart</a> · <a href="https://www.raamrace.org/_files/ugd/49fb96_a3c8fce723b241ddb480a575c72edfa1.pdf" target="_blank" rel="noopener">Route map</a> · <a href="https://www.raamrace.org/_files/ugd/49fb96_c526bef58e11407285beb5d3ba183015.pdf" target="_blank" rel="noopener">Directions</a></p>
@@ -435,6 +443,72 @@ const STATIONS = [
   [53,   3063.3,"Atlantic City","New Jersey",39.357,-74.417,10,"Atlantic City, New Jersey"],
   [999,  3065.0,"Atlantic City (finish)","New Jersey",39.355,-74.412,10,"Atlantic City, New Jersey"]
 ].map(a=>({ts:a[0],mile:a[1],town:a[2],state:a[3],lat:a[4],lon:a[5],elev:a[6],wiki:a[7]}));
+
+/* Curated "did you know" notes per time station (verified, well-known facts).
+   Falls back to the Wikipedia extract where there's no entry. */
+const FACTS = {
+  0:"The start line sits by the Oceanside Pier — at ~1,900 ft, one of the longest wooden piers on the U.S. West Coast.",
+  1:"Borrego Springs is ringed by Anza-Borrego, California's largest state park, and is a certified Dark-Sky town. The desert around it is studded with giant metal dinosaurs and mammoths — Ricardo Breceda's 'Sky Art' sculptures.",
+  2:"Brawley sits below sea level in the Imperial Valley, some of the hottest farmland in the country — all of it irrigated by Colorado River water.",
+  3:"Just outside Blythe lie the Blythe Intaglios — huge human and animal figures scratched into the desert floor, so big they're best seen from the air.",
+  4:"Parker sits on the Colorado River near Parker Dam — often called the deepest dam in the world, because most of its height is buried below the riverbed.",
+  5:"Salome was founded by humorist Dick Wick Hall, who made it famous with 'Salome, where she danced' and tales of a desert frog that never learned to swim.",
+  6:"Congress sits at the foot of Yarnell Hill — the first real wall of climbing as the route leaves the desert and starts up toward the Arizona high country.",
+  7:"Prescott was Arizona's first territorial capital, and its old downtown 'Whiskey Row' once packed in dozens of saloons.",
+  8:"Cottonwood sits in the Verde Valley — the gateway to Sedona's red rocks and the hilltop ghost-town-turned-artist-colony of Jerome.",
+  9:"Flagstaff is home to Lowell Observatory, where Pluto was discovered in 1930 — and in 2001 it became the world's first International Dark-Sky City.",
+  10:"Tuba City sits on the Navajo Nation beside a set of genuine dinosaur tracks pressed into the sandstone some 200 million years ago.",
+  11:"Kayenta is the gateway to Monument Valley, whose towering sandstone buttes starred in countless John Ford Westerns.",
+  12:"Mexican Hat is named for the sombrero-shaped rock balancing just north of town, near the famous Goosenecks of the San Juan River.",
+  14:"Cortez is the gateway to Mesa Verde National Park and its ancient Ancestral Puebloan cliff dwellings.",
+  15:"Durango is a historic mining and railroad town — the Durango & Silverton steam train has wound through the San Juan Mountains since 1882.",
+  16:"Pagosa Springs is built around the 'Mother Spring,' recognised by Guinness as the deepest measured geothermal hot spring on Earth.",
+  17:"Between Pagosa and here the route tops out at Wolf Creek Pass — about 10,857 ft on the Continental Divide, the rooftop of the whole race.",
+  18:"Alamosa sits in the San Luis Valley, gateway to Great Sand Dunes National Park — the tallest sand dunes in North America, up to ~750 ft high.",
+  19:"La Veta nestles beneath the twin Spanish Peaks, famous for the great stone 'dikes' that radiate out from the mountains like walls.",
+  20:"Trinidad is a historic coal town on the old Santa Fe Trail; its brick-paved main street is a National Historic District.",
+  22:"Walsh sits in the far southeast corner of Colorado — ground zero of the 1930s Dust Bowl.",
+  23:"Ulysses is named after President Ulysses S. Grant, out on the high plains of southwest Kansas.",
+  25:"After an EF5 tornado leveled it in 2007, Greensburg rebuilt as one of America's greenest towns — and it's home to the world's largest hand-dug well.",
+  26:"Pratt is known for its matching water towers, painted simply 'HOT' and 'COLD.'",
+  28:"El Dorado was an early-1900s oil boomtown, right beside the Flint Hills — the largest surviving stretch of tallgrass prairie in North America.",
+  29:"Yates Center proudly calls itself the 'Hay Capital of the World.'",
+  30:"Fort Scott grew up around a frontier U.S. Army fort built in 1842, now preserved as a National Historic Site.",
+  31:"Weaubleau sits atop an ancient, deeply eroded crater — thought to be the scar of a meteorite impact hundreds of millions of years ago.",
+  32:"Camdenton is the hub of the Lake of the Ozarks, whose twisting shoreline is longer than the entire coast of California.",
+  33:"Jefferson City is Missouri's state capital, perched on bluffs above the Missouri River and named after Thomas Jefferson.",
+  34:"Washington bills itself the 'Corncob Pipe Capital of the World' — the Missouri Meerschaum factory here has made them since 1869.",
+  35:"Near here the route crosses the Mississippi by the confluence with the Missouri — two of the longest rivers in North America meeting in one spot.",
+  37:"Effingham is marked by 'The Cross at the Crossroads,' a 198-ft steel cross — one of the tallest in the United States.",
+  39:"Bloomington is home to Indiana University — and to the Little 500 bike race that inspired the classic cycling film 'Breaking Away.'",
+  40:"Greensburg is famous for the trees growing out of the top of its 1860s courthouse tower — the celebrated 'Tower Trees.'",
+  41:"Oxford is a classic American college town, built around Miami University.",
+  43:"Chillicothe was Ohio's first state capital; nearby Hopewell earthworks are now a UNESCO World Heritage Site.",
+  44:"Athens sits in the Appalachian foothills around Ohio University.",
+  46:"Grafton is the birthplace of Mother's Day — the first official service was held here in 1908.",
+  47:"McHenry sits on Deep Creek Lake, Maryland's largest lake — a ski and whitewater hub up in the Alleghenies.",
+  48:"Cumberland was the 'Gateway to the West': the eastern start of the historic National Road and the end of the C&O Canal.",
+  49:"At Hancock, Maryland pinches to under two miles wide — the narrowest point in the entire state.",
+  50:"Rouzerville sits right on the Mason–Dixon Line at the foot of South Mountain, just west of the Gettysburg country.",
+  51:"Darlington overlooks the lower Susquehanna near Conowingo Dam — one of the best bald-eagle gathering spots on the East Coast.",
+  53:"The finish is on the Atlantic City Boardwalk — the world's first boardwalk, from 1870 — whose streets gave the U.S. Monopoly board its names."
+};
+
+/* Fun rolling distance comparisons for the coast-to-coast bar (rough, for fun). */
+const TDF_MI = 2113; // a Tour de France ≈ 3,400 km
+const DIST_EQUIV = [
+  [180,  "Copenhagen → Hamburg"],
+  [275,  "Copenhagen → Berlin"],
+  [480,  "Copenhagen → Amsterdam"],
+  [810,  "Copenhagen → Paris"],
+  [1240, "Copenhagen → Rome"],
+  [1740, "Copenhagen → Istanbul"],
+  [TDF_MI,"a whole Tour de France"]
+];
+const MILE_FLAGS = [
+  {mi:1532.5, lab:"½ WAY"},
+  {mi:TDF_MI, lab:"TOUR DE FRANCE"}
+];
 
 /* =========================================================
    BAKED SNAPSHOT (first paint + offline fallback)
@@ -864,6 +938,17 @@ function renderTransect(d, pos, next){
   const covered = '<rect x="0" y="'+top+'" width="'+xm.toFixed(1)+'" height="'+(base-top)+'" fill="#F2A65A" opacity="0.06"/>'
     + '<line x1="0" y1="'+base+'" x2="'+xm.toFixed(1)+'" y2="'+base+'" stroke="#F2A65A" stroke-width="2.5" opacity="0.7"/>';
 
+  // fun milestone flags (½-way, Tour de France distance, …)
+  let flags="";
+  MILE_FLAGS.forEach(f=>{
+    if(f.mi>=TOTAL_MI) return;
+    const fx=x(f.mi), passed=(d.routeMile||0)>=f.mi, col=passed?"#7FE0B0":"#6E7CA0";
+    const anc=labelAnchor(fx,W);
+    flags += '<line x1="'+fx.toFixed(1)+'" y1="'+(top+12)+'" x2="'+fx.toFixed(1)+'" y2="'+base+'" stroke="'+col+'" stroke-width="1" stroke-dasharray="2,3" opacity="0.5"/>'
+      + '<path d="M'+fx.toFixed(1)+','+(top+12)+' l9,3 l-9,3 z" fill="'+col+'" opacity="0.9"/>'
+      + '<text x="'+fx.toFixed(1)+'" y="'+(top+31)+'" fill="'+col+'" font-size="9" font-family="Oswald" letter-spacing=".4" text-anchor="'+anc+'" opacity="0.92">'+f.lab+(passed?' ✓':'')+'</text>';
+  });
+
   // marker
   const lab = "PERNILLE";
   const sub = "mi "+Math.round(d.routeMile||0)+" · "+((d.routeMile||0)/TOTAL_MI*100).toFixed(1)+"%";
@@ -883,13 +968,35 @@ function renderTransect(d, pos, next){
     + '<path d="'+fill+'" fill="url(#terr)" opacity="0.9"/>'
     + '<path d="'+topLine+'" fill="none" stroke="#7E9BD6" stroke-width="1.4" opacity="0.8"/>'
     + '<line x1="0" y1="'+base+'" x2="'+W+'" y2="'+base+'" stroke="#27324F" stroke-width="1.5"/>'
-    + covered + ticks + marker
+    + covered + flags + ticks + marker
     + '</svg>';
   $("transectSvg").innerHTML = svg;
 
   $("pctNum").textContent = ((d.routeMile||0)/TOTAL_MI*100).toFixed(1)+"%";
   $("pctMi").textContent = " · "+fmtDist(d.routeMile||0,0)+" of "+fmtDist(TOTAL_MI,0);
   $("terrainTag").innerHTML = "<b>"+esc(regionTag(pos.next))+"</b>";
+  renderDistFun(d);
+}
+
+/* rolling, just-for-fun distance comparisons under the coast-to-coast bar */
+function renderDistFun(d){
+  const el=$("distFun"); if(!el) return;
+  const mi=d.routeMile||0;
+  if(mi<=0){ el.innerHTML="Rolling out from the Pacific. Let's see how far she gets."; return; }
+  const km=Math.round(mi*1.60934);
+  const marathons=(mi/26.2);
+  const tdfPct=mi/TDF_MI*100;
+  // biggest "Copenhagen → …" style hop she's already beaten, and the next one
+  let passed=null, nextUp=null;
+  for(const [m,lab] of DIST_EQUIV){ if(mi>=m) passed=[m,lab]; else { nextUp=[m,lab]; break; } }
+  let tdfLine;
+  if(mi>=TDF_MI){ tdfLine = "that's <b>"+(mi/TDF_MI).toFixed(2)+"× a Tour de France</b>"; }
+  else { tdfLine = "<b>"+tdfPct.toFixed(0)+"%</b> of a Tour de France"; }
+  let line = '<span class="df-tag">just for fun</span>'
+    + 'She\'s ridden <span class="df-amt">'+Math.round(mi).toLocaleString()+' mi</span> ('+km.toLocaleString()+' km) — '
+    + 'about <b>'+marathons.toFixed(0)+'</b> marathons back-to-back, and '+tdfLine+'.';
+  if(passed){ line += ' Further than <b>'+passed[1]+'</b>'+(nextUp? ' — next stop on the fun-meter: '+nextUp[1]+' at '+nextUp[0].toLocaleString()+' mi.' : '.'); }
+  el.innerHTML = line;
 }
 function labelAnchor(xv,W){ if(xv<90) return "start"; if(xv>W-90) return "end"; return "middle"; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -1303,6 +1410,13 @@ async function maybeWiki(next){
   $("areaTag").textContent = regionTag(next);
   $("areaText").textContent = "Loading a snapshot of the area she's heading into…";
   $("areaImg").style.display="none"; $("areaLink").style.display="none";
+  // curated "did you know" note for this station (instant, independent of Wikipedia)
+  if(FACTS[next.ts]){
+    $("areaFact").innerHTML = "<b>Did you know</b> · " + esc(FACTS[next.ts]);
+    $("areaFact").style.display = "block";
+  } else {
+    $("areaFact").style.display = "none";
+  }
   try{
     const j = await fetchWiki(next.wiki);
     if(state.wikiTitle!==next.wiki) return; // superseded
