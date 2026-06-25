@@ -183,6 +183,9 @@ a{color:var(--sky)}
 /* finish */
 .finish-date{font-family:"Oswald"; font-weight:600; font-size:26px; line-height:1.15}
 .finish-sub{color:var(--mist); font-size:12.5px; font-family:"Space Mono"}
+.cutoff-line{margin:10px 0 12px; padding:9px 12px; background:rgba(242,166,90,.09); border-left:3px solid var(--amber); border-radius:0 8px 8px 0; font-size:12.5px; color:var(--text); line-height:1.55; font-family:"Hanken Grotesk"}
+.cutoff-line b{color:var(--amber); font-family:"Oswald"; letter-spacing:.02em}
+.cutoff-line .cz{font-family:"Space Mono"; color:var(--text)}
 .bar{height:9px; border-radius:999px; background:rgba(255,255,255,.07); overflow:hidden; margin:12px 0 4px; border:1px solid var(--line)}
 .bar > i{display:block; height:100%; background:linear-gradient(90deg, var(--amber), var(--coral)); border-radius:999px}
 .note{color:var(--mist); font-size:12px; margin-top:10px; line-height:1.5}
@@ -332,6 +335,7 @@ footer .dis{max-width:680px; margin:6px auto 0}
       <h2>Finish estimate</h2>
       <div class="finish-date" id="finDate">—</div>
       <div class="finish-sub" id="finLocal"></div>
+      <div class="cutoff-line" id="cutoffLine"></div>
       <div class="bar"><i id="finBar" style="width:0%"></i></div>
       <div class="kv"><span class="k">Distance remaining</span><span class="v" id="finRem">—</span></div>
       <div class="kv"><span class="k">Daily pace so far</span><span class="v" id="finPace">—</span></div>
@@ -380,11 +384,14 @@ footer .dis{max-width:680px; margin:6px auto 0}
    ========================================================= */
 const RIDER_URL = "https://trackleaders.com/raam26i.php?name=Pernille_Kinnunen";
 const TOTAL_MI = 3065.0;
-// RAAM Solo start: 12:00:00 PM PDT on 06/16/26  ->  19:00 UTC
-const START_UTC = Date.UTC(2026, 5, 16, 19, 0, 0);
-// Her finish cutoff (Solo Women 60+): 3:00 PM EDT Monday 29 June 2026
-//   = 12:00 noon PDT = 21:00 CEST  ->  19:00 UTC. The course closes at this moment.
-const CUTOFF_UTC = Date.UTC(2026, 5, 29, 19, 0, 0);
+// She took the OPTIONAL 5:00 AM PDT early start on Tue 16 Jun (allowed for Solo
+// Women 60+). 5:00 AM PDT = 12:00 UTC.
+const START_UTC = Date.UTC(2026, 5, 16, 12, 0, 0);
+// Cutoff = her start + her full 317 h (13 d 5 h) Women-60+ allowance. Taking the
+// early start means she keeps all 317 h (noon-starters forfeit the last 5 h and
+// are capped at the 3 PM EDT course wall). 12:00 UTC 16 Jun + 317 h = 17:00 UTC
+// 29 Jun = 1:00 PM EDT = 10:00 AM PDT = 19:00 Danish time, Monday 29 June.
+const CUTOFF_UTC = Date.UTC(2026, 5, 29, 17, 0, 0);
 const PDT_OFFSET_H = -7; // June -> PDT = UTC-7
 
 // ts, mile, town, state(full), lat, lon, elevationFt, wikiTitle
@@ -613,6 +620,9 @@ function fmtEDT(d){
   try{ return d.toLocaleString("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})+" EDT"; }
   catch(e){ return "—"; }
 }
+// just the HH:MM (24h) in a given IANA zone, and a short weekday/date label
+function hhmm(d, tz){ if(!d) return "—"; try{ return d.toLocaleString("en-GB",{timeZone:tz,hour:"2-digit",minute:"2-digit",hour12:false}); }catch(e){ return "—"; } }
+function dayLabel(d, tz){ if(!d) return ""; try{ return d.toLocaleString("en-US",{timeZone:tz,weekday:"short",month:"short",day:"numeric"}); }catch(e){ return ""; } }
 function durText(ms){
   if(ms<0) ms=0;
   const d=Math.floor(ms/86400000); ms-=d*86400000;
@@ -1214,6 +1224,15 @@ function renderFinish(d){
   $("finRem").textContent = fmtDist(rem,0);
   $("finPace").textContent = pace? fmtDist(pace,0)+"/day" : "—";
 
+  // Hard cut-off in every timezone the family uses, so nobody has to convert.
+  const co = new Date(CUTOFF_UTC);
+  $("cutoffLine").innerHTML =
+    "<b>Hard cut-off · Solo Women 60+ (5am start)</b><br>"
+    + dayLabel(co,"America/New_York") + " &nbsp;·&nbsp; "
+    + "<span class='cz'><b>"+hhmm(co,"Europe/Copenhagen")+"</b> DK</span> &nbsp;·&nbsp; "
+    + "<span class='cz'>"+hhmm(co,"America/New_York")+" EDT</span> &nbsp;·&nbsp; "
+    + "<span class='cz'>"+hhmm(co,"America/Los_Angeles")+" PDT</span>";
+
   // ---- pace needed to beat her Women 60+ cutoff (3pm EDT Mon 29 Jun), and how she compares ----
   const cutoffMs = CUTOFF_UTC;
   const hoursToCutoff = (cutoffMs - Date.now())/3600000;
@@ -1250,7 +1269,7 @@ function renderFinish(d){
     $("finTotal").textContent = durText(totalMs);
     const cutoff = new Date(CUTOFF_UTC);
     const marginH = Math.round((cutoff.getTime()-finishDate.getTime())/3600000);
-    $("finNote").innerHTML = "Projected from her pace so far (her overall average, sleep stops included). Her cutoff (Women 60+) is <b>3pm EDT Mon 29 Jun</b> ("+fmtEDT(cutoff)+") — current projection is about "
+    $("finNote").innerHTML = "Projected from her pace so far (her overall average, sleep stops included). Her cutoff (Women 60+, 5am start) is <b>1pm EDT Mon 29 Jun</b> ("+fmtEDT(cutoff)+") — current projection is about "
       + (marginH>=0? "<b style='color:var(--moss)'>"+marginH+" h inside</b>" : "<b style='color:var(--coral)'>"+Math.abs(marginH)+" h over</b>")
       + " the cutoff. Updates every refresh.";
   } else if(rem<=0){
