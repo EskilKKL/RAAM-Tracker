@@ -387,11 +387,14 @@ const TOTAL_MI = 3065.0;
 // She took the OPTIONAL 5:00 AM PDT early start on Tue 16 Jun (allowed for Solo
 // Women 60+). 5:00 AM PDT = 12:00 UTC.
 const START_UTC = Date.UTC(2026, 5, 16, 12, 0, 0);
-// Cutoff = her start + her full 317 h (13 d 5 h) Women-60+ allowance. Taking the
-// early start means she keeps all 317 h (noon-starters forfeit the last 5 h and
-// are capped at the 3 PM EDT course wall). 12:00 UTC 16 Jun + 317 h = 17:00 UTC
-// 29 Jun = 1:00 PM EDT = 10:00 AM PDT = 19:00 Danish time, Monday 29 June.
-const CUTOFF_UTC = Date.UTC(2026, 5, 29, 17, 0, 0);
+// Her full 317 h (13 d 5 h) Women-60+ allowance from the 5 AM start lands at
+// 17:00 UTC = 1:00 PM EDT Mon 29 Jun. That's the OFFICIAL finish cut-off — when
+// she must be across the line after the closing shuttle + final parade.
+const FINISH_CUTOFF_UTC = Date.UTC(2026, 5, 29, 17, 0, 0);
+// The closing shuttle + final parade take 1 h 10 m on top of the riding, so the
+// BIKE must be done 1 h 10 m earlier: 15:50 UTC = 11:50 AM EDT = 17:50 Danish
+// = 8:50 AM PDT. This is the deadline her *pace* actually has to beat.
+const BIKE_CUTOFF_UTC = Date.UTC(2026, 5, 29, 15, 50, 0);
 const PDT_OFFSET_H = -7; // June -> PDT = UTC-7
 
 // ts, mile, town, state(full), lat, lon, elevationFt, wikiTitle
@@ -1224,17 +1227,21 @@ function renderFinish(d){
   $("finRem").textContent = fmtDist(rem,0);
   $("finPace").textContent = pace? fmtDist(pace,0)+"/day" : "—";
 
-  // Hard cut-off in every timezone the family uses, so nobody has to convert.
-  const co = new Date(CUTOFF_UTC);
+  // Two cut-offs shown clearly: the BIKE deadline (what her pace must beat) and
+  // the OFFICIAL finish after the +1h10m shuttle & parade. All zones, no math.
+  const bco = new Date(BIKE_CUTOFF_UTC), fco = new Date(FINISH_CUTOFF_UTC);
   $("cutoffLine").innerHTML =
-    "<b>Hard cut-off · Solo Women 60+ (5am start)</b><br>"
-    + dayLabel(co,"America/New_York") + " &nbsp;·&nbsp; "
-    + "<span class='cz'><b>"+hhmm(co,"Europe/Copenhagen")+"</b> DK</span> &nbsp;·&nbsp; "
-    + "<span class='cz'>"+hhmm(co,"America/New_York")+" EDT</span> &nbsp;·&nbsp; "
-    + "<span class='cz'>"+hhmm(co,"America/Los_Angeles")+" PDT</span>";
+    "<b>Bike cut-off · Solo Women 60+ (5am start)</b><br>"
+    + dayLabel(bco,"America/New_York") + " &nbsp;·&nbsp; "
+    + "<span class='cz'><b>"+hhmm(bco,"Europe/Copenhagen")+"</b> DK</span> &nbsp;·&nbsp; "
+    + "<span class='cz'>"+hhmm(bco,"America/New_York")+" EDT</span> &nbsp;·&nbsp; "
+    + "<span class='cz'>"+hhmm(bco,"America/Los_Angeles")+" PDT</span>"
+    + "<br><span style='color:var(--mist2); font-size:11.5px'>+1h10m shuttle &amp; parade &rarr; official finish "
+    + "<span class='cz'>"+hhmm(fco,"Europe/Copenhagen")+" DK</span> · "
+    + "<span class='cz'>"+hhmm(fco,"America/New_York")+" EDT</span></span>";
 
-  // ---- pace needed to beat her Women 60+ cutoff (3pm EDT Mon 29 Jun), and how she compares ----
-  const cutoffMs = CUTOFF_UTC;
+  // ---- pace needed to beat her BIKE cut-off (11:50 EDT Mon 29 Jun), and how she compares ----
+  const cutoffMs = BIKE_CUTOFF_UTC;
   const hoursToCutoff = (cutoffMs - Date.now())/3600000;
   const herAvgMph = (d.routeAvg!=null ? d.routeAvg : (pace ? pace/24 : null));
   if(rem<=0){
@@ -1267,11 +1274,11 @@ function renderFinish(d){
     $("finLocal").textContent = "your time: "+fmtLocal(finishDate)+"  ·  "+agoFuture(finishDate).replace("in ","");
     const totalMs = finishDate.getTime()-START_UTC;
     $("finTotal").textContent = durText(totalMs);
-    const cutoff = new Date(CUTOFF_UTC);
+    const cutoff = new Date(BIKE_CUTOFF_UTC);
     const marginH = Math.round((cutoff.getTime()-finishDate.getTime())/3600000);
-    $("finNote").innerHTML = "Projected from her pace so far (her overall average, sleep stops included). Her cutoff (Women 60+, 5am start) is <b>1pm EDT Mon 29 Jun</b> ("+fmtEDT(cutoff)+") — current projection is about "
+    $("finNote").innerHTML = "Projected from her pace so far (her overall average, sleep stops included). Her <b>bike cut-off</b> (Women 60+, 5am start) is <b>11:50 EDT Mon 29 Jun</b> ("+fmtEDT(cutoff)+") — current projection is about "
       + (marginH>=0? "<b style='color:var(--moss)'>"+marginH+" h inside</b>" : "<b style='color:var(--coral)'>"+Math.abs(marginH)+" h over</b>")
-      + " the cutoff. Updates every refresh.";
+      + " it. The +1h10m closing shuttle &amp; parade then bring her to the official finish at 13:00 EDT (19:00 DK).";
   } else if(rem<=0){
     $("finDate").textContent = "Finished 🎉";
     $("finLocal").textContent = "";
